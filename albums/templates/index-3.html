@@ -1,0 +1,157 @@
+<!DOCTYPE HTML>
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<title>相册模板</title>
+		<meta http-equiv="X-UA-Compatible" content="ie=edge,chrome=1" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+		<link rel="stylesheet" href="../../css/style1.css?v=1.34" />
+		<script type="text/javascript" src="../../js/jquery.min.js" ></script>
+	</head>
+	<body>
+		<div id="wrapper" class="wrapper-3">
+			<div class="container">
+				<img src="../../images/watermark3.png" class="flow-image" width="100%" height="100%" />
+				<a href="javascript:void(0);" class="upload-img">
+					<label for="upload-file">上传照片</label>
+				</a>
+				<input type="file" name="upload-file" id="upload-file" accept="image/*" style="display:none;" />
+				<div class="img-view"></div>
+			</div>
+			<div id="share-btn">效果预览</div>
+			<div id="save-img">保存分享</div>
+			<div id="cancel">返回编辑</div>
+		</div>
+		<div id="shclFireballs">
+			<div class="circle"></div>
+			<div class="tips">上传中，请稍候...</div>
+		</div>
+		<!--<script type="text/javascript" src="../../js/touch-0.2.14.js"></script>-->
+		<script type="text/javascript" src="../../js/hammer.min.js" ></script>
+		<script>
+			//上传图片
+			$("#upload-file").on("change",function(){
+				if($(".img-view img").length == 0){
+					var newImg = document.createElement("img");
+					newImg.id = "preview";
+					$(".img-view").append(newImg);
+				}
+				previewImage(this);	
+				$("#preview").css({"left":0,"top":0,"-webkit-transform":"scale(1,1)"});
+				$(".upload-img").animate({"width":"50%"},500);
+				$("#share-btn").animate({"right":0},500);
+				//触摸手势事件处理
+				var hammertime = new Hammer(document.querySelector("#preview"));	
+				var hammertime_left,hammertime_top;		
+				hammertime.get('pan').set({ direction: Hammer.DIRECTION_ALL });   //使垂直或所有方向的pan识别器,（没调用的话 上下滑动不太灵）		
+				hammertime.on("panstart", function (e) {   //添加拖动开始事件 panstart
+					hammertime_left = parseFloat($("#preview").css('left'));
+					hammertime_top = parseFloat($("#preview").css('top'));
+				})				
+				hammertime.on("panmove", function (e) {	   //添加拖动移动事件 panmove
+					$("#preview").css('top',(hammertime_top + e.deltaY));		
+					$("#preview").css('left',(hammertime_left + e.deltaX));						
+					console.log(e);   //控制台输出
+				});				
+				//绑定两手指缩放事件pinch
+				hammertime.add(new Hammer.Pinch());   //监听pinch
+				//hammertime.get('pinch').set({ enable: true });  //同上作用			
+				var initScale;
+				var n_scale = 1;//缩放其实为1倍
+				hammertime.on("pinchstart", function(e){
+					initScale = n_scale;			
+				}); 				
+				hammertime.on("pinchmove", function(e){
+					n_scale = initScale * e.scale
+					var transcale = 'scale(' + n_scale + ')';
+					$("#preview").css('-webkit-transform',transcale);  			
+		             console.log(e);   //控制台输出
+				});
+				//绑定移动事件pan
+				var test_left,test_top;		
+				hammertime.get('pan').set({ direction: Hammer.DIRECTION_ALL });   //使垂直或所有方向的pan识别器,,（没调用的话 上下滑动不太灵）		
+				hammertime.on("panstart", function (e) {   //添加拖动开始事件 panstart
+					test_left = parseFloat($("#preview").css('left'));
+					test_top = parseFloat($("#preview").css('top'));
+				})				
+				hammertime.on("panmove", function (e) {	   //添加拖动移动事件 panmove
+					$("#preview").css('top',(test_top + e.deltaY));		
+					$("#preview").css('left',(test_left + e.deltaX));						
+					console.log(e);   //控制台输出
+				});					
+			});
+			//获取路径
+			function previewImage(obj){
+				var oFile = obj.files[0];
+				var oImage = document.getElementById("preview");
+			 	var oReader = new FileReader();
+		        oReader.onload = function(e){
+			        oImage.src = e.target.result;
+		        }
+		        if(oFile){
+		        	oReader.readAsDataURL(oFile);
+		        }
+			}	
+		</script>
+		<script type="text/javascript" src="../../js/html2canvas.js" ></script>
+		<script>
+			var dataUrl = "";
+			$("#share-btn").on("touchstart click", function(event){
+				$(".upload-img").hide();
+				$(this).hide();
+				$(".flow-image").css("zIndex",2);
+                event.preventDefault();  
+                html2canvas(document.body, {  
+	                allowTaint: true,  
+	                taintTest: false,  
+	                onrendered: function(canvas) {  
+	                    canvas.id = "mycanvas";  
+	                    //document.body.appendChild(canvas);  
+	                    //生成base64图片数据  
+	                    dataUrl = canvas.toDataURL();  
+	                    var newImage = document.createElement("img"); 
+	                    newImage.id = "view";
+	                    newImage.style.cssText="width:90%;";
+	                    newImage.src =  dataUrl;  
+	                    document.body.appendChild(newImage);
+	                    $("#save-img").show();
+	                    $("#cancel").show();
+	                }
+                });
+                $("#save-img").click(function(){
+					//将图片上传到服务器用作图片分享  
+					$("#shclFireballs").show();
+					$("#shclFireballs .tips").html("上传中，请稍候...");
+					var param = {};
+					param['data'] = dataUrl;
+                    $.ajax({  
+                        type : "POST",  
+                        url : "{:U('home/File/uploadPicture1',array('session_id'=>session_id()))}", 
+                        data : param,
+                        timeout : 60000,  
+                        success : function(data){
+                         	$("#shclFireballs .tips").html("上传成功！");
+                         	setTimeout(function(){
+                         		//服务器上保存图片路径，data是返回的文件名。  
+            					window.location.href = "show.html?param=/Uploads/Picture/makepic/"+data;  
+                         	},1000)
+                        },
+                        error:function(){
+                        	$("#shclFireballs .tips").html("上传失败，请重试！");
+                        	setTimeout(function(){
+            					$("#shclFireballs").hide();
+                         	},1000)
+                        }
+                	});
+                });
+                $("#cancel").click(function(){
+                	$("#save-img, #cancel").hide();
+                	$("#share-btn,.upload-img").show();
+                	$(".flow-image").css("zIndex",1);
+                	$("#view").remove();
+                	$("#view").attr("src","null");
+                })
+			});
+		</script>	
+	</body>
+</html>
